@@ -22,12 +22,6 @@ paths:
                 - 'Store'
             summary: 'Returns Brands of sunglasses sold by store'
             description: 'Returns a list of brands available'
-            parameters:
-                - name: search
-                  in: query
-                  description: 'Search for brands by name'
-                  required: false
-                  type: string
             responses:
                 200:
                     description: Succesfull Request
@@ -35,8 +29,6 @@ paths:
                         type: array
                         items:
                             $ref: '#/definitions/Brand'
-                404:
-                    description: Brands not found
     /store/brands/{Id}/products:
         get:
             tags:
@@ -56,6 +48,8 @@ paths:
                         type: array
                         items:
                             $ref: '#/definitions/Product'
+                404:
+                    description: Item not found
     /store/products:
         get:
             tags:
@@ -94,9 +88,9 @@ paths:
                     schema:
                         $ref: '#/definitions/LoginResponse'
                 400:
-                    description: Missing username or password
+                    description: Invalid username or password
                 401:
-                    description: Unauthorized - Invalid Credentials
+                    description: Unauthorized - Invalid Credentials Format
     /me/cart:
         get:
             tags:
@@ -116,7 +110,7 @@ paths:
                         items:
                             $ref: '#/definitions/CartItem'
                 401:
-                    description: Unauthorized - User not authenticated
+                    description: Unauthorized - User not authenticated. Please sign in
         post:
             tags:
                 - 'User'
@@ -160,9 +154,7 @@ paths:
                     description: Item successfully removed from cart
                 401:
                     description: Unauthorized - User not authenticated
-                404:
-                    description: Item not found in cart
-        post:
+        put:
             tags:
                 - 'User'
             summary: Update quantity of item in cart
@@ -176,8 +168,8 @@ paths:
                   in: path
                   required: true
                   type: string
-                - in: body
-                  name: body
+                - name: body
+                  in: body
                   required: true
                   schema:
                       type: object
@@ -187,7 +179,9 @@ paths:
                 401:
                     description: Unauthorized - User not authenticated
                 404:
-                    description: Item not found in cart
+                    description: Item not found or Item not in cart
+                400:
+                    description: Quantity must be at least 1
 definitions:
     Brand:
         type: object
