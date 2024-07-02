@@ -10,17 +10,20 @@ const url = require('url');
 let brands = [];
 let products = [];
 let users = [];
-let accessTokens = [];
+let accessTokens = ['test'];
 
 const myRouter = Router();
+myRouter.use(bodyParser.json());
 
-const findUserAccessToken = () => {
-	users.find((user) => {
-		const validToken = accessTokens.find((token) => {
-			return token == user.login.accessToken;
+const findUserAccessToken = (request) => {
+	const reqToken = request.headers.authorization.substring(7);
+	if (accessTokens.includes(reqToken)) {
+		return users.find((user) => {
+			return reqToken == user.login.accessToken;
 		});
-		return validToken;
-	});
+	} else {
+		return null;
+	}
 };
 
 const server = http
@@ -55,7 +58,7 @@ const server = http
 	});
 
 myRouter.get('/store/brands', (request, response) => {
-	response.writeHead(200, 'Successful Request');
+	response.writeHead(200, { 'Content-Type': 'application/json' });
 	return response.end(JSON.stringify(brands));
 });
 
@@ -67,13 +70,12 @@ myRouter.get('/store/brands/:id/products', (request, response) => {
 		response.writeHead(404, 'Item not found');
 		return response.end();
 	}
-	response.writeHead(200, 'Successful Request');
+	response.writeHead(200, { 'Content-Type': 'application/json' });
 	return response.end(JSON.stringify(product));
 });
 
 myRouter.get('/store/products', (request, response) => {
 	const query = request.query;
-
 	if (products.length === 0) {
 		response.writeHead(404, 'Inventory not found');
 		return response.end();
@@ -82,14 +84,14 @@ myRouter.get('/store/products', (request, response) => {
 		const filteredProducts = products.filter((product) =>
 			product.name.toLowerCase().includes(query.toLowerCase())
 		);
-		response.writeHead(200, 'Successful Request');
+		response.writeHead(200, { 'Content-Type': 'application/json' });
 		return response.end(JSON.stringify(filteredProducts));
 	}
-	response.writeHead(200, 'Successful Request');
+	response.writeHead(200, { 'Content-Type': 'application/json' });
 	return response.end(JSON.stringify(products));
 });
 
-myRouter.post('store/login', (request, response) => {
+myRouter.post('/login', (request, response) => {
 	if (request.body.username && request.body.password) {
 		let user = users.find((user) => {
 			return (
@@ -101,23 +103,22 @@ myRouter.post('store/login', (request, response) => {
 			let newToken = uid(16);
 			user.login.accessToken = newToken;
 			accessTokens.push(newToken);
-			response.writeHead(200, 'You have succesfully logged in');
-			response.end();
+			response.writeHead(200, { 'Content-Type': 'application/json' });
+			return response.end(JSON.stringify(user.login.accessToken));
 		} else {
-			response, writeHead(400, 'Invalid username or password');
-			response.end();
+			response.writeHead(401, 'Invalid username or password');
+			return response.end();
 		}
 	} else {
 		response.writeHead(400, 'Unauthorized - Invalid Credentials Format');
-		response.end();
+		return response.end();
 	}
 });
 
-myRouter.get('me/cart', (request, response) => {
-	const user = findUserAccessToken();
-
+myRouter.get('/me/cart', (request, response) => {
+	const user = findUserAccessToken(request);
 	if (user) {
-		response.writeHead(200, 'Successful Request');
+		response.writeHead(200, { 'Content-Type': 'application/json' });
 		response.end(JSON.stringify(user.cart));
 	} else {
 		response.writeHead(
@@ -129,7 +130,7 @@ myRouter.get('me/cart', (request, response) => {
 });
 
 myRouter.post('/me/cart', (request, response) => {
-	const user = findUserAccessToken();
+	const user = findUserAccessToken(request);
 
 	if (user) {
 		const addedItem = products.find((item) => {
@@ -137,6 +138,7 @@ myRouter.post('/me/cart', (request, response) => {
 		});
 		if (addedItem) {
 			user.cart.push(addedItem);
+			response.writeHead(200, { 'Content-Type': 'application/json' });
 			response.end(JSON.stringify(user.cart));
 		} else {
 			response.writeHead(404, 'Item not found');
@@ -149,7 +151,7 @@ myRouter.post('/me/cart', (request, response) => {
 });
 
 myRouter.delete('/me/cart/:productId', (request, response) => {
-	const user = findUserAccessToken();
+	const user = findUserAccessToken(request);
 
 	if (!user) {
 		response.writeHead(401, 'User not authenticated. Please sign in');
@@ -163,12 +165,13 @@ myRouter.delete('/me/cart/:productId', (request, response) => {
 	const updateCart = user.cart.filter((item) => {
 		return item.id !== request.params.productId;
 	});
-	response.writeHead(200, 'Item successfully removed from cart');
-	response.end(JSON.stringify(updateCart));
+	user.cart = updateCart;
+	response.writeHead(200, { 'Content-Type': 'application/json' });
+	response.end(JSON.stringify(user.cart));
 });
 
 myRouter.put('/me/cart/:productId', (request, response) => {
-	const user = findUserAccessToken();
+	const user = findUserAccessToken(request);
 
 	if (!user) {
 		response.writeHead(401, 'User not authenticated. Please sign in');
@@ -181,7 +184,7 @@ myRouter.put('/me/cart/:productId', (request, response) => {
 	});
 
 	if (quantity < 1) {
-		response.writehead(400, 'Quantity must be at least 1');
+		response.writeHead(400, 'Quantity must be at least 1');
 		response.end();
 	}
 
@@ -197,9 +200,11 @@ myRouter.put('/me/cart/:productId', (request, response) => {
 	if (!cartItem) {
 		response.writeHead(404, 'Item not in cart');
 		response.end();
+	} else {
+		cartItem.quantity = quantity;
 	}
 
-	response.writeHead(200, 'Successful Request');
+	response.writeHead(200, { 'Content-Type': 'application/json' });
 	response.end(JSON.stringify(user.cart));
 });
 module.exports = server;
