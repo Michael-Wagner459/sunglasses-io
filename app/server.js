@@ -7,14 +7,16 @@ var bodyParser = require('body-parser');
 var uid = require('rand-token').uid;
 const url = require('url');
 
+//set up variables to store data
 let brands = [];
 let products = [];
 let users = [];
 let accessTokens = ['test'];
-
+//set up router
 const myRouter = Router();
 myRouter.use(bodyParser.json());
 
+//helper function to authenticate user
 const findUserAccessToken = (request) => {
 	const reqToken = request.headers.authorization.substring(7);
 	if (accessTokens.includes(reqToken)) {
@@ -26,11 +28,13 @@ const findUserAccessToken = (request) => {
 	}
 };
 
+//setting up server
 const server = http
 	.createServer(function (request, response) {
 		myRouter(request, response, finalHandler(request, response));
 	})
 	.listen(8000, () => {
+		//reads files then stores the data into appropriate variables
 		fs.readFile(
 			'./initial-data/brands.json',
 			'utf8',
@@ -57,11 +61,12 @@ const server = http
 		);
 	});
 
+//request that gets all the store brands
 myRouter.get('/store/brands', (request, response) => {
 	response.writeHead(200, { 'Content-Type': 'application/json' });
 	return response.end(JSON.stringify(brands));
 });
-
+//request that gets an product by id number
 myRouter.get('/store/brands/:id/products', (request, response) => {
 	const product = products.find((product) => {
 		return product.id == request.params.id;
@@ -74,6 +79,7 @@ myRouter.get('/store/brands/:id/products', (request, response) => {
 	return response.end(JSON.stringify(product));
 });
 
+//gets all store products if no query or gets a filtered list based on query
 myRouter.get('/store/products', (request, response) => {
 	const query = request.query;
 	if (products.length === 0) {
@@ -91,14 +97,17 @@ myRouter.get('/store/products', (request, response) => {
 	return response.end(JSON.stringify(products));
 });
 
+//logs in the user
 myRouter.post('/login', (request, response) => {
 	if (request.body.username && request.body.password) {
+		//finds user by comparing enterered username and password with list of users
 		let user = users.find((user) => {
 			return (
 				user.login.username == request.body.username &&
 				user.login.password == request.body.password
 			);
 		});
+		//if user logs in it assigns them an access token
 		if (user) {
 			let newToken = uid(16);
 			user.login.accessToken = newToken;
@@ -114,7 +123,7 @@ myRouter.post('/login', (request, response) => {
 		return response.end();
 	}
 });
-
+//retrieves the users cart
 myRouter.get('/me/cart', (request, response) => {
 	const user = findUserAccessToken(request);
 	if (user) {
@@ -128,7 +137,7 @@ myRouter.get('/me/cart', (request, response) => {
 		response.end();
 	}
 });
-
+//adds an item to the users cart based off of a product id sent in the request body
 myRouter.post('/me/cart', (request, response) => {
 	const user = findUserAccessToken(request);
 
@@ -150,6 +159,7 @@ myRouter.post('/me/cart', (request, response) => {
 	}
 });
 
+//deletes an item from the users cart based off a product id sent in the request params
 myRouter.delete('/me/cart/:productId', (request, response) => {
 	const user = findUserAccessToken(request);
 
@@ -170,6 +180,7 @@ myRouter.delete('/me/cart/:productId', (request, response) => {
 	response.end(JSON.stringify(user.cart));
 });
 
+//changes the quantity of the item in a cart based off of product id sent in the params and a quantity number sent in the users body
 myRouter.put('/me/cart/:productId', (request, response) => {
 	const user = findUserAccessToken(request);
 
